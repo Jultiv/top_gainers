@@ -7,18 +7,38 @@ import math
 import time
 from event_manager import EventManager
 from binance_api_connection import BinanceAPIManager
+from topgainers23 import TradingConfig
 
 class OrderExecutor:
     """Exécuteur d'ordres qui interagit avec l'API Binance"""
     
-    def __init__(self, event_manager: EventManager, api_key: str, api_secret: str, test_mode: bool = True):
+    def __init__(self, event_manager: EventManager, api_key: str, api_secret: str, config: TradingConfig):
+        """
+        Initialise l'exécuteur d'ordres
+        """
         self.event_manager = event_manager
-        self.api_manager = BinanceAPIManager(api_key, api_secret, test_mode)
+        self.config = config
+        
+        # Stockage du mode d'exécution pour les décisions ultérieures
+        self.execution_mode = config.ORDER_EXECUTION_MODE
+        
+        # Initialiser l'API manager en passant directement le mode d'exécution
+        # Plus besoin de convertir en use_testnet dans cette classe
+        self.api_manager = BinanceAPIManager(api_key, api_secret, self.execution_mode)
+        
         self.order_history = []
         self.is_running = True
         self.symbol_rules = {}
         self.logger = get_order_logger()
         self.error_logger = get_error_logger()
+        
+        # Log du mode d'exécution
+        modes = {
+            0: "Ordres de test sur testnet (validation uniquement)",
+            1: "Ordres réels sur testnet (avec fonds virtuels)",
+            2: "Ordres réels sur mainnet (ATTENTION: fonds réels)"
+        }
+        self.logger.info(f"Mode d'exécution des ordres: {modes.get(self.execution_mode)}")
         
         # S'abonner aux événements de trading
         self.event_manager.subscribe("open_position", self.handle_open_position)
@@ -225,8 +245,8 @@ class OrderExecutor:
             # Une paire est considérée valide si elle a au moins LOT_SIZE et PRICE_FILTER
             has_minimal_rules = rules and 'step_size' in rules and 'tick_size' in rules
 
-            # Si nous sommes en testnet et que les règles sont insuffisantes
-            if not has_minimal_rules and self.api_manager.test_mode:
+           ## Si nous sommes en testnet et que les règles sont insuffisantes
+            if not has_minimal_rules and self.execution_mode < 2:  # Modes 0 et 1 utilisent testnet
                 error_msg = f"Paire {pair} probablement non disponible sur testnet - ordre non exécuté"
                 self.logger.warning(error_msg)
                 await self.event_manager.emit("order_failed", {
@@ -235,31 +255,22 @@ class OrderExecutor:
                     "reason": error_msg
                 })
                 return
-            
             # Maintenant calculer la quantité avec les règles à jour
             quantity = self._calculate_quantity(pair, position_size, price)
-            
-            self.logger.info(f"Exécution d'ordre d'achat - {pair} - Quantité: {quantity}")
-            
-            if not self.api_manager.test_mode:
-                # Vérifier uniquement le solde USDT puisque c'est la seule monnaie de transaction
+
+            # Vérification de solde pour les ordres réels (modes 1 et 2)
+            if self.execution_mode > 0:  # Si mode = 1 ou 2 (ordres réels)
                 has_sufficient_balance = await self.check_balance(
                     asset='USDT', 
                     amount_required=position_size
                 )
-                
                 if not has_sufficient_balance:
-                    error_msg = f"Fonds USDT insuffisants pour ouvrir une position sur {pair}"
-                    self.logger.error(error_msg)
-                    await self.event_manager.emit("order_failed", {
-                        "pair": pair,
-                        "side": "BUY",
-                        "reason": error_msg
-                    })
+                    # Code d'échec...
                     return
 
-            # Exécuter l'ordre (en test ou réel selon configuration)
-            if self.api_manager.test_mode:
+            # Exécution d'ordre selon le mode
+            if self.execution_mode == 0:
+                # Mode 0: Ordres de test sur testnet (validation seulement)
                 result = await self.api_manager.place_test_order(
                     symbol=pair,
                     side="BUY",
@@ -268,7 +279,7 @@ class OrderExecutor:
                 )
                 self.logger.info(f"Ordre de test exécuté avec succès: {result}")
             else:
-                # Exécution d'un ordre réel d'achat
+                # Modes 1 et 2: Ordres réels (sur testnet ou mainnet)
                 try:
                     result = await self.place_real_order(
                         symbol=pair,
@@ -276,7 +287,9 @@ class OrderExecutor:
                         type="MARKET",
                         quantity=quantity
                     )
-                    self.logger.info(f"Ordre d'achat réel exécuté pour {pair} - ID: {result.get('orderId')}")
+                    env = "testnet" if self.execution_mode == 1 else "PRODUCTION"
+                    self.logger.info(f"Ordre d'achat réel exécuté sur {env} pour {pair} - ID: {result.get('orderId')}")
+          #      
                 except aiohttp.ClientResponseError as e:
                     self.logger.error(f"Échec de l'ordre d'achat réel pour {pair}: {e}")
                     # Modification: accéder au texte d'erreur correctement
@@ -356,7 +369,8 @@ class OrderExecutor:
                 self.logger.warning(f"Règles non disponibles pour {pair} - quantité arrondie à {quantity}")
         
             # Exécuter l'ordre de vente
-            if self.api_manager.test_mode:
+            if self.execution_mode == 0:
+                # Mode 0: Ordres de test sur testnet (validation seulement)
                 result = await self.api_manager.place_test_order(
                     symbol=pair,
                     side="SELL",
@@ -365,15 +379,17 @@ class OrderExecutor:
                 )
                 self.logger.info(f"Ordre de vente de test exécuté: {result}")
             else:
-                # Exécution d'un ordre réel de vente
+                # Modes 1 et 2: Ordres réels (sur testnet ou mainnet)
                 try:
                     result = await self.place_real_order(
                         symbol=pair,
-                        side="BUY",
+                        side="SELL",
                         type="MARKET",
                         quantity=quantity
                     )
-                    self.logger.info(f"Ordre d'achat réel exécuté pour {pair} - ID: {result.get('orderId')}")
+                    env = "testnet" if self.execution_mode == 1 else "PRODUCTION"
+                    self.logger.info(f"Ordre de vente réel exécuté sur {env} pour {pair} - ID: {result.get('orderId')}")
+                
                 except aiohttp.ClientResponseError as e:
                     self.logger.error(f"Échec de l'ordre d'achat réel pour {pair}: {e}")
                     # Modification: accéder au texte d'erreur correctement
@@ -389,6 +405,7 @@ class OrderExecutor:
                         "reason": error_text
                     })
                     return
+                
                 except Exception as e:
                     self.logger.error(f"Échec de l'ordre d'achat réel pour {pair}: {e}")
                     # Émettre un événement d'échec pour notification

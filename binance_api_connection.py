@@ -25,7 +25,7 @@ class BinanceAPIManager:
     Cette classe encapsule toutes les fonctionnalités liées à l'API Binance,
     y compris l'authentification, les requêtes REST et les signatures.
     """
-    def __init__(self, api_key: str = "", api_secret: str = "", test_mode: bool = False):
+    def __init__(self, api_key: str = "", api_secret: str = "", execution_mode: Optional[int] = None):
         # Initialisation des loggers
         self.logger = get_api_logger()
         self.error_logger = get_error_logger()
@@ -34,17 +34,24 @@ class BinanceAPIManager:
         self.api_key = api_key or os.environ.get('BINANCE_API_KEY', '')
         self.api_secret = api_secret or os.environ.get('BINANCE_API_SECRET', '')
         
-        # Mode test (utilise l'API de test de Binance si True)
-        self.test_mode = test_mode
+        # Mode d'exécution (0, 1 = testnet, 2 = mainnet)
+        # Si non spécifié, utiliser la valeur par défaut 0 (test sur testnet)
+        self.execution_mode = 0 if execution_mode is None else execution_mode
         
-        # URLs de base
-        self.base_url = "https://testnet.binance.vision" if test_mode else "https://api.binance.com"
-        self.base_ws_url = "wss://testnet.binance.vision/ws" if test_mode else "wss://stream.binance.com:9443/ws"
+        # Déterminer si on utilise le testnet basé sur le mode d'exécution
+        self.use_testnet = self.execution_mode < 2  # Modes 0 et 1 utilisent testnet
+        
+        # URLs de base selon le mode (testnet ou mainnet)
+        self.base_url = "https://testnet.binance.vision" if self.use_testnet else "https://api.binance.com"
+        self.base_ws_url = "wss://testnet.binance.vision/ws" if self.use_testnet else "wss://stream.binance.com:9443/ws"
         
         # Session HTTP pour les requêtes API
         self.session = None
         
-        self.logger.info(f"BinanceAPIManager initialisé - Mode test: {test_mode}")
+        # Log explicite pour montrer que les deux paramètres sont alignés
+        env_type = 'testnet' if self.use_testnet else 'production'
+        order_type = 'test' if self.execution_mode == 0 else 'réel'
+        self.logger.info(f"BinanceAPIManager initialisé - Environnement: {env_type}, Exécution d'ordres: {order_type}")
 
     async def init_session(self):
         """Initialise la session HTTP pour les requêtes API"""

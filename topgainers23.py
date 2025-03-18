@@ -19,6 +19,12 @@ from logger_config import cleanup_logger
 
 @dataclass
 class TradingConfig:
+    # Paramètres pour le mode d'exécution des ordres
+    # 0 = Ordres de test sur testnet (validation seulement, pas de modification de solde)
+    # 1 = Ordres réels sur testnet (exécution avec fonds virtuels)
+    # 2 = Ordres réels sur mainnet (exécution avec fonds réels)
+    ORDER_EXECUTION_MODE: int = 0
+    
     # Paramètres temporels et d'analyse
     INTERVAL: int = 15
     TIME_SLICES: int = 2  
