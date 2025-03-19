@@ -13,7 +13,7 @@ import hashlib
 import time
 import aiohttp
 import socket
-from websockets.client import connect as ws_connect
+from websockets.client import connect as ws_connect # type: ignore
 from websockets.exceptions import ConnectionClosed
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
@@ -25,7 +25,7 @@ class BinanceAPIManager:
     Cette classe encapsule toutes les fonctionnalités liées à l'API Binance,
     y compris l'authentification, les requêtes REST et les signatures.
     """
-    def __init__(self, api_key: str = "", api_secret: str = "", execution_mode: Optional[int] = None):
+    def __init__(self, api_key: str = "", api_secret: str = "", execution_mode: Optional[int] = None, reference_currency: Optional[str] = None):
         # Initialisation des loggers
         self.logger = get_api_logger()
         self.error_logger = get_error_logger()
@@ -37,6 +37,9 @@ class BinanceAPIManager:
         # Mode d'exécution (0, 1 = testnet, 2 = mainnet)
         # Si non spécifié, utiliser la valeur par défaut 0 (test sur testnet)
         self.execution_mode = 0 if execution_mode is None else execution_mode
+        
+        # Monnaie de référence (USDT par défaut)
+        self.reference_currency = reference_currency or os.environ.get('REFERENCE_CURRENCY', 'USDT')
         
         # Déterminer si on utilise le testnet basé sur le mode d'exécution
         self.use_testnet = self.execution_mode < 2  # Modes 0 et 1 utilisent testnet
@@ -51,7 +54,7 @@ class BinanceAPIManager:
         # Log explicite pour montrer que les deux paramètres sont alignés
         env_type = 'testnet' if self.use_testnet else 'production'
         order_type = 'test' if self.execution_mode == 0 else 'réel'
-        self.logger.info(f"BinanceAPIManager initialisé - Environnement: {env_type}, Exécution d'ordres: {order_type}")
+        self.logger.info(f"BinanceAPIManager initialisé - Environnement: {env_type}, Exécution d'ordres: {order_type}, Monnaie de référence: {self.reference_currency}")
 
     async def init_session(self):
         """Initialise la session HTTP pour les requêtes API"""

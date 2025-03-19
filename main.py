@@ -39,6 +39,14 @@ def parse_arguments():
               "2=Ordres réels sur mainnet (ATTENTION: fonds réels!)")
     )
     
+    # Nouvel argument pour la monnaie de référence
+    parser.add_argument(
+        "--reference-currency",
+        type=str,
+        default="USDC",
+        help="Monnaie de référence à utiliser pour le trading (ex: USDT, USDC, BUSD)"
+    )
+
     return parser.parse_args()
 
 async def main():
@@ -53,19 +61,24 @@ async def main():
     # Créer la configuration avec le mode d'exécution spécifié
     config = TradingConfig()
     config.ORDER_EXECUTION_MODE = args.execution_mode
+    config.REFERENCE_CURRENCY = args.reference_currency  # Définir la monnaie de référence
     
-    # Log le mode d'exécution sélectionné
+    # Log le mode d'exécution sélectionné et la monnaie de référence
     execution_modes = {
         0: "Ordres de test sur testnet (validation uniquement)",
         1: "Ordres réels sur testnet (avec fonds virtuels)",
         2: "ATTENTION: Ordres réels sur mainnet (fonds réels)"
     }
     logger.info(f"Mode d'exécution sélectionné: {execution_modes.get(args.execution_mode)}")
+    logger.info(f"Monnaie de référence sélectionnée: {config.REFERENCE_CURRENCY}")
+    
+    # Stockage de la monnaie de référence dans une variable d'environnement pour les autres modules
+    os.environ['REFERENCE_CURRENCY'] = config.REFERENCE_CURRENCY
     
     # Vérification de sécurité pour le mode production
     if args.execution_mode == 2:
         logger.warning("!!! ATTENTION !!! Vous avez activé le mode d'exécution réel sur mainnet.")
-        logger.warning("Ce mode utilise de vrais fonds et exécute de vrais ordres sur Binance.")
+        logger.warning(f"Ce mode utilise de vrais fonds et exécute de vrais ordres sur Binance avec {config.REFERENCE_CURRENCY}.")
         logger.warning("Appuyez sur Ctrl+C maintenant pour annuler si ce n'est pas intentionnel.")
         # Attente de 5 secondes pour permettre l'annulation
         await asyncio.sleep(5)

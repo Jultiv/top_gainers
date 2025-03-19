@@ -32,18 +32,20 @@ class OrderExecutor:
         self.logger = get_order_logger()
         self.error_logger = get_error_logger()
         
-        # Log du mode d'exécution
+        # Log du mode d'exécution et de la monnaie de référence
         modes = {
             0: "Ordres de test sur testnet (validation uniquement)",
             1: "Ordres réels sur testnet (avec fonds virtuels)",
             2: "Ordres réels sur mainnet (ATTENTION: fonds réels)"
         }
+        
         self.logger.info(f"Mode d'exécution des ordres: {modes.get(self.execution_mode)}")
+        self.logger.info(f"Monnaie de référence: {self.config.REFERENCE_CURRENCY}")
         
         # S'abonner aux événements de trading
         self.event_manager.subscribe("open_position", self.handle_open_position)
         self.event_manager.subscribe("close_position", self.handle_close_position)
-        
+
     async def initialize(self):
         """Initialise la connexion à l'API et teste sa validité"""
         await self.api_manager.init_session()
@@ -245,7 +247,7 @@ class OrderExecutor:
             # Une paire est considérée valide si elle a au moins LOT_SIZE et PRICE_FILTER
             has_minimal_rules = rules and 'step_size' in rules and 'tick_size' in rules
 
-           ## Si nous sommes en testnet et que les règles sont insuffisantes
+        # Si nous sommes en testnet et que les règles sont insuffisantes
             if not has_minimal_rules and self.execution_mode < 2:  # Modes 0 et 1 utilisent testnet
                 error_msg = f"Paire {pair} probablement non disponible sur testnet - ordre non exécuté"
                 self.logger.warning(error_msg)
@@ -255,17 +257,26 @@ class OrderExecutor:
                     "reason": error_msg
                 })
                 return
+                
             # Maintenant calculer la quantité avec les règles à jour
             quantity = self._calculate_quantity(pair, position_size, price)
 
             # Vérification de solde pour les ordres réels (modes 1 et 2)
             if self.execution_mode > 0:  # Si mode = 1 ou 2 (ordres réels)
+                # Utiliser la monnaie de référence à partir de la configuration
+                reference_currency = self.config.REFERENCE_CURRENCY
+                
                 has_sufficient_balance = await self.check_balance(
-                    asset='USDT', 
+                    asset=reference_currency, 
                     amount_required=position_size
                 )
                 if not has_sufficient_balance:
-                    # Code d'échec...
+                    self.logger.warning(f"Solde {reference_currency} insuffisant pour ouvrir une position sur {pair}")
+                    await self.event_manager.emit("order_failed", {
+                        "pair": pair,
+                        "side": "BUY",
+                        "reason": f"Solde {reference_currency} insuffisant"
+                    })
                     return
 
             # Exécution d'ordre selon le mode
@@ -289,7 +300,7 @@ class OrderExecutor:
                     )
                     env = "testnet" if self.execution_mode == 1 else "PRODUCTION"
                     self.logger.info(f"Ordre d'achat réel exécuté sur {env} pour {pair} - ID: {result.get('orderId')}")
-          #      
+                
                 except aiohttp.ClientResponseError as e:
                     self.logger.error(f"Échec de l'ordre d'achat réel pour {pair}: {e}")
                     # Modification: accéder au texte d'erreur correctement
@@ -305,6 +316,7 @@ class OrderExecutor:
                         "reason": error_text
                     })
                     return
+                
                 except Exception as e:
                     self.logger.error(f"Échec de l'ordre d'achat réel pour {pair}: {e}")
                     # Émettre un événement d'échec pour notification

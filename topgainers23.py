@@ -19,6 +19,10 @@ from logger_config import cleanup_logger
 
 @dataclass
 class TradingConfig:
+    
+    # Par exemple: 'USDT', 'USDC', 'BUSD', etc.
+    REFERENCE_CURRENCY: str = 'USDC'
+    
     # Paramètres pour le mode d'exécution des ordres
     # 0 = Ordres de test sur testnet (validation seulement, pas de modification de solde)
     # 1 = Ordres réels sur testnet (exécution avec fonds virtuels)
@@ -1385,10 +1389,20 @@ class CryptoTrader:
                         metrics = self.websocket_metrics.get_metrics_report()
                         self.logger.info(f"Métriques WebSocket: {json.dumps(metrics, indent=2)}")
 
-    async def get_top_100_usdt_pairs(self) -> List[str]:
-        """Récupère les 100 paires USDT les plus tradées sur Binance"""
+    async def get_top_trading_pairs(self) -> List[str]:
+        """
+        Récupère les paires les plus tradées avec la monnaie de référence configurée
+        
+        Returns:
+            Liste des symboles (ex: BTCUSDT, ETHUSDT si USDT est la référence)
+        """
         retry_count = 0
         max_retries = 3
+        
+        # Récupérer la monnaie de référence depuis la configuration
+        ref_currency = self.config.REFERENCE_CURRENCY
+        
+        self.logger.info(f"Recherche des meilleures paires en {ref_currency}...")
         
         while retry_count < max_retries:
             try:
@@ -1397,9 +1411,11 @@ class CryptoTrader:
                     async with session.get(url) as response:
                         data = await response.json()
                         
+                # Filtrer les paires qui se terminent par la monnaie de référence (ex: BTCUSDT, ETHUSDT, etc.)
                 sorted_pairs = sorted(data, key=lambda x: float(x['quoteVolume']), reverse=True)
-                pairs = [item['symbol'] for item in sorted_pairs if item['symbol'].endswith('USDT')][:self.config.MAX_PAIRS]
-                self.logger.info(f"Récupération réussie de {len(pairs)} paires USDT")
+                pairs = [item['symbol'] for item in sorted_pairs if item['symbol'].endswith(ref_currency)][:self.config.MAX_PAIRS]
+                
+                self.logger.info(f"Récupération réussie de {len(pairs)} paires {ref_currency}")
                 return pairs
             except Exception as e:
                 retry_count += 1
@@ -1408,7 +1424,7 @@ class CryptoTrader:
                     await asyncio.sleep(5)
         
         # Si toutes les tentatives ont échoué, on retourne une liste vide plutôt que None
-        self.logger.critical("Impossible de récupérer les paires après plusieurs tentatives. Utilisation d'une liste vide.")
+        self.logger.critical(f"Impossible de récupérer les paires {ref_currency} après plusieurs tentatives. Utilisation d'une liste vide.")
         return []
 
     async def handle_websocket_message(self, message: str):
@@ -1683,32 +1699,33 @@ class CryptoTrader:
             await asyncio.sleep(1)
 
     async def start(self):
-            """Démarre le bot de trading avec monitoring amélioré"""
-            self.logger.info("Démarrage du bot de trading...")
+        """Démarre le bot de trading avec monitoring amélioré"""
+        self.logger.info(f"Démarrage du bot de trading avec {self.config.REFERENCE_CURRENCY} comme monnaie de référence...")
 
-            if self.config.ENABLE_WARMUP:
-                warmup_duration_mins = self.warmup_duration / 60
-                self.logger.info(f"Mode warm-up activé. Durée prévue: {warmup_duration_mins:.1f} minutes")
-            else:
-                self.logger.info("Mode warm-up désactivé. Trading actif dès le démarrage.")
+        if self.config.ENABLE_WARMUP:
+            warmup_duration_mins = self.warmup_duration / 60
+            self.logger.info(f"Mode warm-up activé. Durée prévue: {warmup_duration_mins:.1f} minutes")
+        else:
+            self.logger.info("Mode warm-up désactivé. Trading actif dès le démarrage.")
 
-            try:
-                pairs = await self.get_top_100_usdt_pairs()
-                
-                # Démarrage des tâches en parallèle
-                websocket_task = asyncio.create_task(self.connect_websocket(pairs))
-                analysis_task = asyncio.create_task(self.analyze_trading_opportunities())
-                
-                # Attendre les tâches
-                await asyncio.gather(websocket_task, analysis_task)
-                
-            except Exception as e:
-                self.logger.error(f"Erreur critique: {e}")
-                raise
-            finally:
-                if self.is_running:
-                    self.is_running = False
-                    # Log final des métriques
-                    metrics = self.websocket_metrics.get_metrics_report()
-                    self.logger.info(f"Métriques finales WebSocket: {json.dumps(metrics, indent=2)}")
-                    self.logger.info("Arrêt du bot de trading")
+        try:
+            # Utiliser la nouvelle méthode pour récupérer les paires avec la monnaie de référence configurée
+            pairs = await self.get_top_trading_pairs()
+            
+            # Démarrage des tâches en parallèle
+            websocket_task = asyncio.create_task(self.connect_websocket(pairs))
+            analysis_task = asyncio.create_task(self.analyze_trading_opportunities())
+            
+            # Attendre les tâches
+            await asyncio.gather(websocket_task, analysis_task)
+            
+        except Exception as e:
+            self.logger.error(f"Erreur critique: {e}")
+            raise
+        finally:
+            if self.is_running:
+                self.is_running = False
+                # Log final des métriques
+                metrics = self.websocket_metrics.get_metrics_report()
+                self.logger.info(f"Métriques finales WebSocket: {json.dumps(metrics, indent=2)}")
+                self.logger.info("Arrêt du bot de trading")
