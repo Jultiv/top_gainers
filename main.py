@@ -1,16 +1,17 @@
+# main_enhanced.py
 import asyncio
 import os
 import logging
 from typing import Optional
 from event_manager import EventManager
 from order_executor import OrderExecutor
-from topgainers23 import CryptoTrader, TradingConfig
 from dotenv import load_dotenv
-from logger_config import setup_logger, cleanup_all_loggers
+from logger_config import setup_logger, cleanup_all_loggers, set_verbosity, VerbosityLevel
+from trader_display_integration import init_display_system
 import argparse  # Pour le traitement des arguments en ligne de commande
 
-
-load_dotenv()  # Charger les variables d'environnement depuis .env
+# Charger les variables d'environnement depuis .env
+load_dotenv()
 
 # Nettoyer tous les loggers au démarrage pour éviter les duplications
 cleanup_all_loggers()
@@ -39,18 +40,27 @@ def parse_arguments():
               "2=Ordres réels sur mainnet (ATTENTION: fonds réels!)")
     )
     
-    # Nouvel argument pour la monnaie de référence
+    # Argument pour la monnaie de référence
     parser.add_argument(
         "--reference-currency",
         type=str,
         default="USDC",
         help="Monnaie de référence à utiliser pour le trading (ex: USDT, USDC, BUSD)"
     )
+    
+    # Argument pour le niveau de verbosité
+    parser.add_argument(
+        "--verbosity",
+        type=str,
+        choices=["minimal", "normal", "detailed", "debug"],
+        default="normal",
+        help="Niveau de verbosité des logs dans le terminal"
+    )
 
     return parser.parse_args()
 
 async def main():
-    """Point d'entrée de l'application avec architecture événementielle"""
+    """Point d'entrée de l'application avec architecture événementielle et affichage amélioré"""
     # Parser les arguments en ligne de commande
     args = parse_arguments()
     
@@ -58,7 +68,17 @@ async def main():
     api_key = os.environ.get('BINANCE_API_KEY', '')
     api_secret = os.environ.get('BINANCE_API_SECRET', '')
     
+    # Initialisation du système d'affichage amélioré
+    # Cette fonction modifie la classe CryptoTrader pour intégrer l'affichage
+    CryptoTrader = init_display_system()
+    
+    # Configurer le niveau de verbosité
+    set_verbosity(args.verbosity)
+    
     # Créer la configuration avec le mode d'exécution spécifié
+    # Importer la classe après l'initialisation du système d'affichage
+    from topgainers23 import TradingConfig
+    
     config = TradingConfig()
     config.ORDER_EXECUTION_MODE = args.execution_mode
     config.REFERENCE_CURRENCY = args.reference_currency  # Définir la monnaie de référence
@@ -71,6 +91,7 @@ async def main():
     }
     logger.info(f"Mode d'exécution sélectionné: {execution_modes.get(args.execution_mode)}")
     logger.info(f"Monnaie de référence sélectionnée: {config.REFERENCE_CURRENCY}")
+    logger.info(f"Niveau de verbosité: {args.verbosity}")
     
     # Stockage de la monnaie de référence dans une variable d'environnement pour les autres modules
     os.environ['REFERENCE_CURRENCY'] = config.REFERENCE_CURRENCY
@@ -101,7 +122,7 @@ async def main():
     trader = CryptoTrader(config, event_manager)
     
     try:
-        # Démarrer le trader
+        # Démarrer le trader (la méthode start a été modifiée pour intégrer l'affichage)
         await trader.start()
     except KeyboardInterrupt:
         logger.info("Arrêt manuel du bot...")

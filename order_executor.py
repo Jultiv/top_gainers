@@ -332,8 +332,12 @@ class OrderExecutor:
                 "pair": pair,
                 "position_type": position_type,
                 "quantity": quantity,
-                "price": price,
-                "status": "success"
+                "entry_price": price,  # Renommer "price" en "entry_price" pour plus de clarté
+                "position_size": position_size,
+                "take_profit": data.get('take_profit', price * 1.01),  # Valeur par défaut si non fournie
+                "stop_loss": data.get('stop_loss', price * 0.99),      # Valeur par défaut si non fournie
+                "status": "success",
+                "open_time": time.time()  # Ajout de l'heure d'ouverture pour calculer la durée
             })
             
         except Exception as e:
@@ -429,10 +433,27 @@ class OrderExecutor:
                     return
 
             # Émettre un événement de confirmation
+            # Récupérer ou estimer le prix de sortie
+            exit_price = data.get('exit_price', await self.api_manager._get_current_price(pair))
+
+            # Calculer le profit/perte si non fourni
+            profit_loss = data.get('profit_loss', 0.0)
+            if profit_loss == 0.0 and 'entry_price' in data:
+                # Calcul approximatif si non fourni
+                entry_price = data.get('entry_price', 0.0)
+                position_size = data.get('position_size', 0.0)
+                profit_loss = position_size * (exit_price / entry_price - 1)
+
             await self.event_manager.emit("position_closed", {
                 "pair": pair,
+                "position_type": data.get('position_type', 'N/A'),
+                "entry_price": data.get('entry_price', 0.0),
+                "exit_price": exit_price,
+                "quantity": quantity,
+                "profit_loss": profit_loss,
                 "close_reason": close_reason,
-                "status": "success"
+                "status": "success",
+                "close_time": time.time()
             })
             
         except Exception as e:

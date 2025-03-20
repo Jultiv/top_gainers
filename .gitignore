@@ -71,6 +71,7 @@ positions.csv
 crypto_prices.csv
 trading_bot.log
 trading_config.md
+cmd.md
 
 # Jupyter Notebook
 .ipynb_checkpoints
