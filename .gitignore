@@ -67,11 +67,15 @@ Thumbs.db
 *~
 
 # Project specific
+trading_reports/
+data/
 positions.csv
 crypto_prices.csv
 trading_bot.log
 trading_config.md
-cmd.md
+
+# Ignorer tout le contenu du dossier "nom_du_dossier"
+
 
 # Jupyter Notebook
 .ipynb_checkpoints

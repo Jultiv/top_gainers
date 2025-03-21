@@ -27,17 +27,17 @@ class TradingConfig:
     # 0 = Ordres de test sur testnet (validation seulement, pas de modification de solde)
     # 1 = Ordres réels sur testnet (exécution avec fonds virtuels)
     # 2 = Ordres réels sur mainnet (exécution avec fonds réels)
-    ORDER_EXECUTION_MODE: int = 1
+    ORDER_EXECUTION_MODE: int = 0
     
     # Paramètres temporels et d'analyse
     INTERVAL: int = 15
     TIME_SLICES: int = 2  
     MIN_CONSECUTIVE_TRENDS: int = 2
     USE_TREND_VERIFICATION: bool = False # contrôle si le bot doit vérifier ou non que les variations sont croissantes entre les tranches
-    USE_TRAILING_STOP: bool = False # Active/désactive le trailing stop
+    USE_TRAILING_STOP: bool = True # Active/désactive le trailing stop
 
     # Paramètres pour le warm-up
-    ENABLE_WARMUP: bool = False # Active/désactive le mécanisme de warm-up
+    ENABLE_WARMUP: bool = True # Active/désactive le mécanisme de warm-up
     WARMUP_MULTIPLIER: float = 1.0 # Multiplicateur optionnel pour ajuster la durée du warm-up
 
     # Paramètres ATR et Volatilité (nouveaux)
@@ -79,17 +79,17 @@ class TradingConfig:
     MIN_VOLUME_CHANGE_THRESHOLD: float = 0.01  # Variation minimale de volume requise en %
 
     # Take Profit et Stop Loss %
-    TAKE_PROFIT_SAFE: float = 0.5  
-    STOP_LOSS_SAFE: float = -0.5
-    TAKE_PROFIT_RISKY: float = 1.0
-    STOP_LOSS_RISKY: float = -1.0
+    TAKE_PROFIT_SAFE: float = 1.0  
+    STOP_LOSS_SAFE: float = -1.0
+    TAKE_PROFIT_RISKY: float = 2.0
+    STOP_LOSS_RISKY: float = -2.0
 
      # Paramètres pour le trailing stop poisition prudente
-    TRAILING_STOP_ACTIVATION_SAFE: float = 1.2  # % de profit à partir duquel le trailing stop s'active
-    TRAILING_STOP_DISTANCE_SAFE: float = 0.6    # Distance du trailing stop en % par rapport au prix le plus haut
+    TRAILING_STOP_ACTIVATION_SAFE: float = 0.5  # % de profit à partir duquel le trailing stop s'active
+    TRAILING_STOP_DISTANCE_SAFE: float = 0.2    # Distance du trailing stop en % par rapport au prix le plus haut
     # Paramètres pour le trailing stop - Position Risquée
-    TRAILING_STOP_ACTIVATION_RISKY: float = 1.2  # % de profit pour activation (risqué)
-    TRAILING_STOP_DISTANCE_RISKY: float = 0.6   # Distance du trailing (risqué)
+    TRAILING_STOP_ACTIVATION_RISKY: float = 1.0  # % de profit pour activation (risqué)
+    TRAILING_STOP_DISTANCE_RISKY: float = 0.5   # Distance du trailing (risqué)
        
     # Paramètres de gestion des positions
     PAIR_COOLDOWN: int = 180
