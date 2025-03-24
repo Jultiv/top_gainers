@@ -72,7 +72,8 @@ data/
 positions.csv
 crypto_prices.csv
 trading_bot.log
-trading_config.md
+trading_config_long.md
+trading_config_short.md
 
 # Ignorer tout le contenu du dossier "nom_du_dossier"
 

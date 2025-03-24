@@ -1,5 +1,7 @@
 ## Commandes d'execution
 
+python main.py --execution-mode 1
+
 ### --execution-mode [0-2] : Mode d'exécution des ordres
 0 : Tests sur testnet (validation seulement)
 1 : Ordres réels sur testnet (avec fonds virtuels)

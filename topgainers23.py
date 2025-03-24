@@ -27,13 +27,13 @@ class TradingConfig:
     # 0 = Ordres de test sur testnet (validation seulement, pas de modification de solde)
     # 1 = Ordres réels sur testnet (exécution avec fonds virtuels)
     # 2 = Ordres réels sur mainnet (exécution avec fonds réels)
-    ORDER_EXECUTION_MODE: int = 0
+    ORDER_EXECUTION_MODE: int = 1
     
     # Paramètres temporels et d'analyse
-    INTERVAL: int = 15
-    TIME_SLICES: int = 2  
+    INTERVAL: int = 180
+    TIME_SLICES: int = 3  
     MIN_CONSECUTIVE_TRENDS: int = 2
-    USE_TREND_VERIFICATION: bool = False # contrôle si le bot doit vérifier ou non que les variations sont croissantes entre les tranches
+    USE_TREND_VERIFICATION: bool = True # contrôle si le bot doit vérifier ou non que les variations sont croissantes entre les tranches
     USE_TRAILING_STOP: bool = True # Active/désactive le trailing stop
 
     # Paramètres pour le warm-up
@@ -64,35 +64,35 @@ class TradingConfig:
     RSI_MIN_RISKY: float = 40.0  # Seuil minimum pour une position risquée
 
     # Paramètres de position
-    MAX_PAIRS: int = 100  # Limitation du nombre de paires
+    MAX_PAIRS: int = 200  # Limitation du nombre de paires
     INITIAL_CAPITAL: float = 100
     POSITION_SIZE: float = 30.0  # Pourcentage du capital à utiliser par position (25%)
-    MIN_POSITION_SIZE: float = 10.0  # Taille minimale d'une position pour éviter des positions trop petites
+    MIN_POSITION_SIZE: float = 15.0  # Taille minimale d'une position pour éviter des positions trop petites
 
     # Seuils de tendance %
-    TREND_THRESHOLD_SAFE_PER_SLICE: float = 0.2
-    TREND_CONFIRMATION_SAFE: float = 0.5
-    TREND_THRESHOLD_RISKY_PER_SLICE: float = 0.4
-    TREND_CONFIRMATION_RISKY: float = 1.0
+    TREND_THRESHOLD_SAFE_PER_SLICE: float = 0.5
+    TREND_CONFIRMATION_SAFE: float = 2.0
+    TREND_THRESHOLD_RISKY_PER_SLICE: float = 1.0
+    TREND_CONFIRMATION_RISKY: float = 4.0
 
     # seuil de variation du volume
     MIN_VOLUME_CHANGE_THRESHOLD: float = 0.01  # Variation minimale de volume requise en %
 
     # Take Profit et Stop Loss %
-    TAKE_PROFIT_SAFE: float = 1.0  
-    STOP_LOSS_SAFE: float = -1.0
-    TAKE_PROFIT_RISKY: float = 2.0
-    STOP_LOSS_RISKY: float = -2.0
+    TAKE_PROFIT_SAFE: float = 3.5  
+    STOP_LOSS_SAFE: float = -2.8
+    TAKE_PROFIT_RISKY: float = 6.5
+    STOP_LOSS_RISKY: float = -4.0
 
      # Paramètres pour le trailing stop poisition prudente
-    TRAILING_STOP_ACTIVATION_SAFE: float = 0.5  # % de profit à partir duquel le trailing stop s'active
-    TRAILING_STOP_DISTANCE_SAFE: float = 0.2    # Distance du trailing stop en % par rapport au prix le plus haut
+    TRAILING_STOP_ACTIVATION_SAFE: float = 1.2  # % de profit à partir duquel le trailing stop s'active
+    TRAILING_STOP_DISTANCE_SAFE: float = 0.6    # Distance du trailing stop en % par rapport au prix le plus haut
     # Paramètres pour le trailing stop - Position Risquée
-    TRAILING_STOP_ACTIVATION_RISKY: float = 1.0  # % de profit pour activation (risqué)
-    TRAILING_STOP_DISTANCE_RISKY: float = 0.5   # Distance du trailing (risqué)
+    TRAILING_STOP_ACTIVATION_RISKY: float = 1.2  # % de profit pour activation (risqué)
+    TRAILING_STOP_DISTANCE_RISKY: float = 0.6   # Distance du trailing (risqué)
        
     # Paramètres de gestion des positions
-    PAIR_COOLDOWN: int = 180
+    PAIR_COOLDOWN: int = 1800
     TRANSACTION_FEE: float = 0.00075
     OUTPUT_FILE: str = "crypto_prices.csv"
     POSITIONS_FILE: str = "positions.csv"

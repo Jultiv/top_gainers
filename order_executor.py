@@ -298,6 +298,16 @@ class OrderExecutor:
                         type="MARKET",
                         quantity=quantity
                     )
+                    if result.get('status') == 'EXPIRED' or float(result.get('executedQty', '0')) == 0:
+                        self.logger.warning(f"Ordre d'achat accepté mais non exécuté pour {pair} - Statut: {result.get('status')}")
+                        # Émettre un événement d'échec
+                        await self.event_manager.emit("order_failed", {
+                            "pair": pair,
+                            "side": "BUY",
+                            "reason": f"Ordre accepté mais non exécuté (Statut: {result.get('status')})"
+                        })
+                        return
+                    
                     env = "testnet" if self.execution_mode == 1 else "PRODUCTION"
                     self.logger.info(f"Ordre d'achat réel exécuté sur {env} pour {pair} - ID: {result.get('orderId')}")
                 
