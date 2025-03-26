@@ -21,6 +21,9 @@ async def integrate_display_with_trader(trader):
     # Stocker la référence sur le trader pour y accéder depuis ailleurs
     trader.display = display
     
+    # Stocker une référence au trader dans l'affichage pour pouvoir contrôler son état
+    display.trader = trader
+
     # Afficher le message de bienvenue
     display.display_welcome_message()
     

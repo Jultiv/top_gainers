@@ -31,13 +31,13 @@ class TradingConfig:
     
     # Paramètres temporels et d'analyse
     INTERVAL: int = 180
-    TIME_SLICES: int = 3  
-    MIN_CONSECUTIVE_TRENDS: int = 2
-    USE_TREND_VERIFICATION: bool = True # contrôle si le bot doit vérifier ou non que les variations sont croissantes entre les tranches
+    TIME_SLICES: int = 2  
+    MIN_CONSECUTIVE_TRENDS: int = 1
+    USE_TREND_VERIFICATION: bool = False # contrôle si le bot doit vérifier ou non que les variations sont croissantes entre les tranches
     USE_TRAILING_STOP: bool = True # Active/désactive le trailing stop
 
     # Paramètres pour le warm-up
-    ENABLE_WARMUP: bool = True # Active/désactive le mécanisme de warm-up
+    ENABLE_WARMUP: bool = False # Active/désactive le mécanisme de warm-up
     WARMUP_MULTIPLIER: float = 1.0 # Multiplicateur optionnel pour ajuster la durée du warm-up
 
     # Paramètres ATR et Volatilité (nouveaux)
@@ -70,13 +70,13 @@ class TradingConfig:
     MIN_POSITION_SIZE: float = 15.0  # Taille minimale d'une position pour éviter des positions trop petites
 
     # Seuils de tendance %
-    TREND_THRESHOLD_SAFE_PER_SLICE: float = 0.5
-    TREND_CONFIRMATION_SAFE: float = 2.0
-    TREND_THRESHOLD_RISKY_PER_SLICE: float = 1.0
-    TREND_CONFIRMATION_RISKY: float = 4.0
+    TREND_THRESHOLD_SAFE_PER_SLICE: float = 0.2
+    TREND_CONFIRMATION_SAFE: float = 1.5
+    TREND_THRESHOLD_RISKY_PER_SLICE: float = 0.2
+    TREND_CONFIRMATION_RISKY: float = 3.0
 
     # seuil de variation du volume
-    MIN_VOLUME_CHANGE_THRESHOLD: float = 0.01  # Variation minimale de volume requise en %
+    MIN_VOLUME_CHANGE_THRESHOLD: float = 0.1  # Variation minimale de volume requise en %
 
     # Take Profit et Stop Loss %
     TAKE_PROFIT_SAFE: float = 3.5  
@@ -1258,6 +1258,7 @@ class CryptoTrader:
         self.price_manager = PriceManager(config)
         self.trend_confirmations: Dict[str, float] = {}
         self.is_running = True
+        self.accepting_new_positions = True
         self.reconnect_delay = config.RECONNECT_DELAY
         self.max_reconnect_delay = config.MAX_RECONNECT_DELAY
         self.websocket_metrics = WebSocketMetrics()
@@ -1301,6 +1302,19 @@ class CryptoTrader:
             
         return False
 
+    def set_trading_status(self, accepting: bool) -> None:
+        """
+        Active ou désactive la prise de nouvelles positions.
+        
+        Args:
+            accepting: True pour permettre les nouvelles positions, False pour les bloquer
+        """
+        # Modifier l'état seulement s'il change pour éviter des logs redondants
+        if self.accepting_new_positions != accepting:
+            self.accepting_new_positions = accepting
+            status_str = "activée" if accepting else "désactivée"
+            self.logger.info(f"Prise de nouvelles positions {status_str}")
+                                                                                                                                                                                          
     async def heartbeat(self, websocket):
         """Maintient la connexion active avec des pings réguliers"""
         while True:
@@ -1615,7 +1629,8 @@ class CryptoTrader:
                         )
 
                     # Vérification des opportunités de trading uniquement si le warm-up est terminé
-                    if self.is_warmed_up and pair not in self.position_manager.active_positions:
+                    # et si le système accepte de nouvelles positions
+                    if self.is_warmed_up and self.accepting_new_positions and pair not in self.position_manager.active_positions:
                         if not self.position_manager.can_open_position(pair):
                             continue
 

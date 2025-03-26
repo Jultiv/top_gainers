@@ -1,12 +1,11 @@
 ## Commandes d'execution
-
+python main.py --execution-mode 0
 python main.py --execution-mode 1
 
 ### --execution-mode [0-2] : Mode d'exécution des ordres
 0 : Tests sur testnet (validation seulement)
 1 : Ordres réels sur testnet (avec fonds virtuels)
 2 : Ordres réels sur mainnet (fonds réels)
-
 
 ### --reference-currency [symbole] : 
 Monnaie de référence (USDT, USDC, BUSD, etc.)
@@ -29,6 +28,10 @@ verbose normal : Change la verbosité à normal
 verbose detailed : Change la verbosité à detailed
 verbose debug : Change la verbosité à debug
 quit, exit, q : Quitte le programme
+
+## Arrêter la prise de nouvelles positions tout en gardant le bot actif pour gérer les positions existantes.
+stop_trading ou st
+
 
 
 ## Code couleur

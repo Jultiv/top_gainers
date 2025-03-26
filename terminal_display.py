@@ -1,6 +1,7 @@
 # terminal_display.py
 import time
 import asyncio
+from typing import Optional
 from datetime import datetime, timedelta
 from logger_config import get_trading_logger, ConsoleTable, log_separator, log_summary, set_verbosity, VerbosityLevel, Colors
 
@@ -53,7 +54,8 @@ class TerminalDisplay:
         self.price_manager = price_manager
         self.config = config
         self.logger = get_trading_logger()
-        
+        self.trader = None # référence au trader (sera définie dans integrate_display_with_trader)
+
         # État de l'affichage
         self.last_summary_time = time.time()
         self.summary_interval = 3600  # 1 heure par défaut
@@ -326,6 +328,11 @@ class TerminalDisplay:
         self.logger.info(f"Capital initial: {self.config.INITIAL_CAPITAL:.2f}")
         self.logger.info(f"Capital actuel: {self.position_manager.capital:.2f}")
         
+        # Ajout de l'état de prise de positions
+        if hasattr(self, 'trader') and self.trader:
+            trading_status = "ACTIVÉE" if self.trader.accepting_new_positions else "DÉSACTIVÉE"
+            self.logger.info(f"Prise de positions: {trading_status}")
+        
         # Informations sur les paires surveillées
         pairs_count = len(self.price_manager.current_prices)
         self.logger.info(f"Paires surveillées: {pairs_count}")
@@ -397,7 +404,29 @@ class TerminalDisplay:
         self.logger.info(f"  - DEBUG: Tous les détails techniques pour le débogage")
         
         self.logger.info(f"\nDémarrage du bot...")
+
+    def toggle_trading(self, enable: Optional[bool] = None) -> None:
+        """
+        Active ou désactive la prise de nouvelles positions.
         
+        Args:
+            enable: True pour activer, False pour désactiver, None pour basculer l'état actuel
+        """
+        # Si CryptoTrader est accessible
+        if hasattr(self, 'trader') and self.trader:
+            current_state = self.trader.accepting_new_positions
+            
+            # Si enable est None, on bascule l'état actuel
+            new_state = not current_state if enable is None else enable
+            
+            # Appeler la méthode set_trading_status du trader
+            self.trader.set_trading_status(new_state)
+            
+            status_str = "activée" if new_state else "désactivée"
+            self.logger.info(f"Prise de nouvelles positions {status_str}")
+        else:
+            self.logger.error("Impossible d'accéder au trader pour modifier l'état de trading")
+
     def process_command(self, command):
         """
         Traite une commande utilisateur entrée dans le terminal
@@ -420,6 +449,8 @@ class TerminalDisplay:
             self.logger.info("  positions, p - Affiche les positions actives")
             self.logger.info("  summary, sum - Affiche un résumé des performances")
             self.logger.info("  vol - Affiche le classement par volatilité")
+            self.logger.info("  stop_trading, st - Arrête la prise de nouvelles positions")
+            self.logger.info("  start_trading, sta - Réactive la prise de nouvelles positions")
             self.logger.info("  verbose min - Change la verbosité à minimal")
             self.logger.info("  verbose normal - Change la verbosité à normal")
             self.logger.info("  verbose detailed - Change la verbosité à detailed")
@@ -437,6 +468,13 @@ class TerminalDisplay:
             
         elif command == "vol":
             self.display_volatility_rankings()
+        
+        # Nouvelles commandes pour contrôler la prise de positions
+        elif command in ["stop_trading", "st"]:
+            self.toggle_trading(False)
+            
+        elif command in ["start_trading", "sta"]:
+            self.toggle_trading(True)
             
         elif command.startswith("verbose "):
             level = command.split(" ")[1]
