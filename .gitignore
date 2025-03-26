@@ -75,7 +75,6 @@ trading_bot.log
 trading_config_long.md
 trading_config_short.md
 old_keys_testnet.md
-cmd_analyser.md
 
 # Ignorer tout le contenu du dossier "nom_du_dossier"
 
@@ -86,6 +85,5 @@ cmd_analyser.md
 # IPython
 profile_default/
 ipython_config.py
-binance_account_info.py
-trading_session_analyzer.py 
+binance_account_info.py 
 server_time.py 
